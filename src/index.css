@@ -1,0 +1,304 @@
+@import 'tailwindcss';
+
+/* ==================================================================
+   SENTINEL — Design Tokens
+   
+   Light mode is the PRIMARY theme.
+   Dark mode overrides via .dark class on <html>.
+   ================================================================== */
+@theme {
+  /* ── Light Mode (Default) ─────────────────────────────────────── */
+  --color-bg: #F7F7F5;
+  --color-card: #FFFFFF;
+  --color-surface: #F0F0EE;
+  --color-surface-2: #E8E8E6;
+  --color-surface-3: #D9D9D7;
+
+  --color-border: #E5E5E5;
+  --color-border-strong: #D4D4D4;
+
+  --color-text: #111111;
+  --color-text-secondary: #525252;
+  --color-text-muted: #737373;
+  --color-text-faint: #A3A3A3;
+
+  --color-primary: #111111;
+  --color-primary-text: #FFFFFF;
+  --color-primary-hover: #333333;
+
+  --color-hover: #F0F0EE;
+
+  /* Semantic status */
+  --color-success: #16A34A;
+  --color-success-bg: #F0FDF4;
+  --color-success-border: #BBF7D0;
+
+  --color-warning: #D97706;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
+
+  --color-critical: #DC2626;
+  --color-critical-bg: #FEF2F2;
+  --color-critical-border: #FECACA;
+
+  --color-info: #2563EB;
+  --color-info-bg: #EFF6FF;
+  --color-info-border: #BFDBFE;
+
+  /* Risk severity */
+  --color-sev-critical: #DC2626;
+  --color-sev-high: #D97706;
+  --color-sev-medium: #2563EB;
+  --color-sev-low: #737373;
+
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --animate-fade-up: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pulse-ring: pulse-ring 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-ticker: ticker 46s linear infinite;
+  --animate-menu-in: menu-in 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-up: slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-sidebar-in: sidebar-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Dark Mode Overrides ──────────────────────────────────────── */
+.dark {
+  --color-bg: #000000;
+  --color-card: #080808;
+  --color-surface: #0C0C0C;
+  --color-surface-2: #111111;
+  --color-surface-3: #1A1A1A;
+
+  --color-border: #1A1A1A;
+  --color-border-strong: #242424;
+
+  --color-text: #E5E5E5;
+  --color-text-secondary: #A3A3A3;
+  --color-text-muted: #737373;
+  --color-text-faint: #525252;
+
+  --color-primary: #FFFFFF;
+  --color-primary-text: #000000;
+  --color-primary-hover: #E5E5E5;
+
+  --color-hover: #0C0C0C;
+
+  --color-success: #4ADE80;
+  --color-success-bg: #052E16;
+  --color-success-border: #166534;
+
+  --color-warning: #FBBF24;
+  --color-warning-bg: #451A03;
+  --color-warning-border: #92400E;
+
+  --color-critical: #F87171;
+  --color-critical-bg: #450A0A;
+  --color-critical-border: #991B1B;
+
+  --color-info: #60A5FA;
+  --color-info-bg: #172554;
+  --color-info-border: #1E40AF;
+
+  --color-sev-critical: #F87171;
+  --color-sev-high: #FBBF24;
+  --color-sev-medium: #60A5FA;
+  --color-sev-low: #525252;
+
+  --radius: 12px;
+}
+
+/* ── Keyframes ─────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-ring {
+  0% { opacity: 0.6; transform: scale(0.85); }
+  70% { opacity: 0; transform: scale(2.1); }
+  100% { opacity: 0; transform: scale(2.1); }
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes sidebar-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes expand-down {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Base ──────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: light;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dark html, html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    font-variant-ligatures: contextual;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: rgba(17, 17, 17, 0.15);
+    color: #111111;
+  }
+
+  .dark ::selection {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+    background-clip: content-box;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  input, button, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--color-text-faint);
+  }
+}
+
+/* ── Utility Classes ───────────────────────────────────────────── */
+@utility card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+@utility card-hover {
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  &:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.06);
+  }
+}
+
+@utility card-elevated {
+  background-color: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+
+@utility overlay {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.12), 0 2px 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+.dark .overlay {
+  box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.6), 0 2px 8px -2px rgba(0, 0, 0, 0.3);
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Skeleton loading animation */
+@utility skeleton {
+  background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface-2) 50%, var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius);
+}
+
+/* Group collapse animation */
+@utility nav-group-children {
+  overflow: hidden;
+  transition: max-height 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "model_version": "sentinel-ueba-v1",
+  "model_name": "Logistic Regression",
+  "training_date": "2026-09-12T18:46:55.036672+00:00",
+  "training_samples": 8000,
+  "test_samples": 2000,
+  "feature_count": 42,
+  "evaluation": {
+    "model": "Logistic Regression",
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "roc_auc": 1.0,
+    "pr_auc": 1.0,
+    "false_positive_rate": 0.0,
+    "confusion_matrix": [
+      [
+        1839,
+        0
+      ],
+      [
+        0,
+        161
+      ]
+    ]
+  },
+  "all_results": [
+    {
+      "model": "Logistic Regression",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
+      "false_positive_rate": 0.0,
+      "confusion_matrix": [
+        [
+          1839,
+          0
+        ],
+        [
+          0,
+          161
+        ]
+      ]
+    },
+    {
+      "model": "Random Forest",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "roc_auc": 1.0,
+      "pr_auc": 1.0,
+      "false_positive_rate": 0.0,
+      "confusion_matrix": [
+        [
+          1839,
+          0
+        ],
+        [
+          0,
+          161
+        ]
+      ]
+    }
+  ],
+  "feature_importance": [
+    [
+      "account_type_standard",
+      1.0
+    ],
+    [
+      "dormant_account_days",
+      0.8953374555712227
+    ],
+    [
+      "cloud_upload_mb",
+      0.8102350641867297
+    ],
+    [
+      "external_transfer_mb",
+      0.7994128755542086
+    ],
+    [
+      "unusual_location_score",
+      0.7212851451437771
+    ],
+    [
+      "after_hours_sensitive_access",
+      0.7161183196446057
+    ],
+    [
+      "privileged_access_count",
+      0.6746835333346681
+    ],
+    [
+      "peer_deviation_score",
+      0.6734366599012279
+    ],
+    [
+      "sensitive_file_access",
+      0.6711496922164948
+    ],
+    [
+      "new_device_score",
+      0.5679439355263772
+    ],
+    [
+      "account_type_service",
+      0.5676407316507244
+    ],
+    [
+      "access_velocity_per_hour",
+      0.5498553108636676
+    ],
+    [
+      "privilege_change_count_30d",
+      0.5429089553875507
+    ],
+    [
+      "account_type_privileged",
+      0.5283821169621504
+    ],
+    [
+      "email_external_ratio",
+      0.4879917675040363
+    ],
+    [
+      "usb_event_count",
+      0.4740730439996257
+    ],
+    [
+      "failed_login_rate",
+      0.434144180678922
+    ],
+    [
+      "weekend_ratio",
+      0.4301093283823673
+    ],
+    [
+      "account_type_contractor",
+      0.37580400691995147
+    ],
+    [
+      "off_hours_ratio",
+      0.3745887067192016
+    ]
+  ]
+}

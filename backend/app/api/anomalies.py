@@ -1,4 +1,5 @@
 import math
+import uuid as uuid_mod
 from typing import Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -110,7 +111,12 @@ def get_anomaly(
     current_user: User = Depends(require_security_analyst),
     db: Session = Depends(get_db),
 ):
-    anomaly = db.query(Anomaly).filter(Anomaly.id == anomaly_id).first()
+    # Coerce to UUID: Postgres accepts strings, SQLite (tests) requires UUID objects
+    try:
+        _aid = uuid_mod.UUID(str(anomaly_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+    anomaly = db.query(Anomaly).filter(Anomaly.id == _aid).first()
     if not anomaly:
         raise HTTPException(status_code=404, detail="Anomaly not found")
     
@@ -147,7 +153,12 @@ def update_anomaly(
     current_user: User = Depends(require_security_analyst),
     db: Session = Depends(get_db),
 ):
-    anomaly = db.query(Anomaly).filter(Anomaly.id == anomaly_id).first()
+    # Coerce to UUID: Postgres accepts strings, SQLite (tests) requires UUID objects
+    try:
+        _aid = uuid_mod.UUID(str(anomaly_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Anomaly not found")
+    anomaly = db.query(Anomaly).filter(Anomaly.id == _aid).first()
     if not anomaly:
         raise HTTPException(status_code=404, detail="Anomaly not found")
     

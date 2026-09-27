@@ -7,6 +7,20 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class BootstrapAdminRequest(BaseModel):
+    """One-time creation of the first admin (only when no users exist)."""
+    name: str
+    email: EmailStr
+    password: str
+    department: Optional[str] = None
+    job_title: Optional[str] = None
+
+
+class HasUsersResponse(BaseModel):
+    hasUsers: bool
+    totalUsers: int
+
+
 class TokenResponse(BaseModel):
     accessToken: str
     refreshToken: str
@@ -30,6 +44,13 @@ class UserInfo(BaseModel):
 
 
 class LoginResponse(BaseModel):
+    accessToken: str
+    refreshToken: str
+    sessionId: Optional[str] = None
+    user: UserInfo
+
+
+class BootstrapAdminResponse(BaseModel):
     accessToken: str
     refreshToken: str
     user: UserInfo

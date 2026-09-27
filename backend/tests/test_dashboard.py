@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 def test_dashboard_requires_auth(client):
     """Test dashboard requires authentication."""
     response = client.get("/api/v1/dashboard")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_dashboard_returns_metrics(client, auth_headers):

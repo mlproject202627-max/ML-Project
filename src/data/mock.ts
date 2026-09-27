@@ -91,6 +91,20 @@ export const KIND_META: Record<AnomalyKind, KindMeta> = {
     description:
       'Token replay, fingerprint mismatch or concurrent-session concurrency inconsistent with the device profile.',
   },
+  data_exfiltration: {
+    label: 'Data Exfiltration',
+    short: 'Exfil',
+    color: '#ef4444',
+    description:
+      'Sensitive material leaving the estate — a classified document downloaded outside its business need, or copied to removable media. Raised by RULE-006 and RULE-009.',
+  },
+  correlated_anomaly: {
+    label: 'Correlated Anomalies',
+    short: 'Correlated',
+    color: '#d946ef',
+    description:
+      'Several independent detection rules firing in the same window. Correlated signals of this kind indicate coordinated behaviour rather than an isolated mistake. Raised by RULE-011.',
+  },
 }
 
 export const SEVERITY_META: Record<

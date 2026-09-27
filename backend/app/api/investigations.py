@@ -1,4 +1,5 @@
 import math
+import uuid as uuid_mod
 from typing import Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -93,7 +94,12 @@ def get_investigation(
     current_user: User = Depends(require_security_analyst),
     db: Session = Depends(get_db),
 ):
-    inv = db.query(Investigation).filter(Investigation.id == investigation_id).first()
+    # Coerce to UUID: Postgres accepts strings, SQLite (tests) requires UUID objects
+    try:
+        _iid = uuid_mod.UUID(str(investigation_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Investigation not found")
+    inv = db.query(Investigation).filter(Investigation.id == _iid).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Investigation not found")
     
@@ -130,7 +136,8 @@ def create_investigation(
     db: Session = Depends(get_db),
 ):
     inv = Investigation(
-        anomaly_id=data.anomaly_id,
+        # Coerce to UUID: Postgres accepts strings, SQLite (tests) requires UUID objects
+        anomaly_id=uuid_mod.UUID(str(data.anomaly_id)),
         title=data.title,
         summary=data.summary,
         priority=data.priority,
@@ -178,7 +185,12 @@ def update_investigation(
     current_user: User = Depends(require_security_analyst),
     db: Session = Depends(get_db),
 ):
-    inv = db.query(Investigation).filter(Investigation.id == investigation_id).first()
+    # Coerce to UUID: Postgres accepts strings, SQLite (tests) requires UUID objects
+    try:
+        _iid = uuid_mod.UUID(str(investigation_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Investigation not found")
+    inv = db.query(Investigation).filter(Investigation.id == _iid).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Investigation not found")
     
@@ -229,7 +241,12 @@ def assign_investigation(
     current_user: User = Depends(require_security_manager),
     db: Session = Depends(get_db),
 ):
-    inv = db.query(Investigation).filter(Investigation.id == investigation_id).first()
+    # Coerce to UUID: Postgres accepts strings, SQLite (tests) requires UUID objects
+    try:
+        _iid = uuid_mod.UUID(str(investigation_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Investigation not found")
+    inv = db.query(Investigation).filter(Investigation.id == _iid).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Investigation not found")
     
@@ -279,7 +296,12 @@ def resolve_investigation(
     current_user: User = Depends(require_security_analyst),
     db: Session = Depends(get_db),
 ):
-    inv = db.query(Investigation).filter(Investigation.id == investigation_id).first()
+    # Coerce to UUID: Postgres accepts strings, SQLite (tests) requires UUID objects
+    try:
+        _iid = uuid_mod.UUID(str(investigation_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Investigation not found")
+    inv = db.query(Investigation).filter(Investigation.id == _iid).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Investigation not found")
     

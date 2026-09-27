@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { employeeById, events as ALL_EVENTS } from '../../data/mock'
 import type { ActivityEvent } from '../../data/types'
-import { cn, riskTone } from '../../lib/utils'
+import { clockTime, cn, riskTone } from '../../lib/utils'
 import { Avatar } from '../ui/Avatar'
 
 const VERDICT_META: Record<
@@ -20,7 +19,7 @@ export function EventFeed({
   height,
   className,
   onOpenEmployee,
-  events = ALL_EVENTS,
+  events = [],
 }: {
   live: boolean
   limit?: number
@@ -55,9 +54,9 @@ export function EventFeed({
       style={height ? { height } : undefined}
     >
       {rotated.map((ev, i) => {
-        const emp = employeeById(ev.employeeId)
         const tone = riskTone(ev.risk)
         const meta = VERDICT_META[ev.verdict]
+        const name = ev.employeeName ?? ev.employeeId
         return (
           <li
             key={ev.id}
@@ -66,13 +65,15 @@ export function EventFeed({
               i === 0 && live && 'animate-fade-up',
             )}
           >
-            {emp && (
-              <button type="button" onClick={() => onOpenEmployee(emp.id)} className="shrink-0">
-                <Avatar initials={emp.initials} department={emp.department} size={26} />
+            {ev.employeeInitials && (
+              <button type="button" onClick={() => onOpenEmployee(ev.employeeId)} className="shrink-0">
+                <Avatar initials={ev.employeeInitials} size={26} />
               </button>
             )}
 
-            <span className="num w-[52px] shrink-0 text-[10.5px] text-[var(--color-text-faint)]">{ev.ts}</span>
+            <span className="num w-[52px] shrink-0 text-[10.5px] text-[var(--color-text-faint)]">
+              {clockTime(ev.ts)}
+            </span>
 
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-[11px]">
@@ -81,7 +82,7 @@ export function EventFeed({
                 <span className="num truncate text-[var(--color-text-muted)]">{ev.target}</span>
               </p>
               <p className="mt-0.5 truncate text-[9.5px] text-[var(--color-text-faint)]">
-                {emp?.name ?? ev.employeeId} · {emp?.department ?? '—'}
+                {name} · {ev.risk > 0 ? `risk ${ev.risk}` : 'no risk contribution'}
               </p>
             </div>
 

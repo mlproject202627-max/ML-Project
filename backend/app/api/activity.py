@@ -14,6 +14,58 @@ from app.schemas.activity import ActivityResponse, ActivityListResponse
 router = APIRouter(prefix="/api/v1/activity", tags=["Activity"])
 
 
+def _serialise(activity: Activity) -> ActivityResponse:
+    return ActivityResponse(
+        id=str(activity.id),
+        user_id=str(activity.user_id),
+        timestamp=activity.timestamp,
+        event_type=activity.event_type,
+        action=activity.action,
+        resource=activity.resource,
+        source_ip=activity.source_ip,
+        device=activity.device,
+        location=activity.location,
+        application=activity.application,
+        metadata=activity.extra_metadata,
+        risk_contribution=activity.risk_contribution,
+        created_at=activity.created_at,
+    )
+
+
+@router.get("/my", response_model=ActivityListResponse)
+def my_activity(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    event_type: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The signed-in employee's own security timeline (spec §21).
+
+    Scoped to the caller by the server, not by a query parameter — there is no
+    `user_id` argument here precisely so that one employee cannot read another's
+    activity by editing a URL.
+    """
+    query = db.query(Activity).filter(Activity.user_id == current_user.id)
+    if event_type:
+        query = query.filter(Activity.event_type == event_type)
+
+    total = query.count()
+    rows = (
+        query.order_by(Activity.timestamp.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return ActivityListResponse(
+        items=[_serialise(a) for a in rows],
+        page=page,
+        page_size=page_size,
+        total=total,
+        total_pages=math.ceil(total / page_size) if total else 1,
+    )
+
+
 @router.get("", response_model=ActivityListResponse)
 def list_activities(
     page: int = Query(1, ge=1),

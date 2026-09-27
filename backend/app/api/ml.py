@@ -4,8 +4,7 @@ from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user
-from app.core.dependencies import require_security_analyst
+from app.core.dependencies import require_security_analyst, require_security_read
 from app.models.user import User
 
 router = APIRouter(prefix="/api/v1/ml", tags=["ML Prediction"])
@@ -85,13 +84,27 @@ def predict(
 
 @router.get("/status")
 def ml_status(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_security_read),
 ):
-    """Get ML model status."""
-    from ml.inference import ml_service
+    """Operational status of the detector that actually scores risk.
 
+    Console-gated (spec §22): model identity and training state are internals of
+    the detection stack, not something an employee-portal session should be able
+    to enumerate. Read-only, so VIEWER may see it; `/predict` above is a compute
+    action and stays analyst-only.
+
+    This reports `ml.anomaly` — the Isolation Forest wired into the risk engine
+    through `services.detection`. The `ml.inference` service used by the
+    `/predict` endpoint above is a legacy stub with fixed weights, retained for
+    the ingestion path; reporting *its* version here told an operator about a
+    model that plays no part in any alert.
+    """
+    from ml.anomaly import get_detector
+
+    detector = get_detector()
     return {
-        "loaded": ml_service.is_ready,
-        "model_name": ml_service.model_name,
-        "model_version": ml_service.model_version,
+        "loaded": detector is not None,
+        "modelName": "IsolationForest",
+        "trainingRows": detector.training_rows if detector else 0,
+        "trainedAt": detector.trained_at.isoformat() if detector and detector.trained_at else None,
     }

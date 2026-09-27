@@ -8,6 +8,7 @@ import {
   getLoginErrorMessage,
   type ApiUser,
 } from './api'
+import { trackLogin, trackLogout } from './telemetry'
 
 interface AuthState {
   user: ApiUser | null
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await apiLogin(email, password)
       setState({ user: data.user, loading: false, error: null })
+      trackLogin() // real-time login moment: time, IP-side metadata, geo consent prompt
     } catch (err: unknown) {
       const message = getLoginErrorMessage(err)
       setState((s) => ({ ...s, loading: false, error: message }))
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiLogout()
     } finally {
+      trackLogout() // flush LOGOUT_TIME before the session context dies
       setState({ user: null, loading: false, error: null })
     }
   }, [])

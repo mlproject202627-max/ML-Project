@@ -240,7 +240,7 @@ let _refreshPromise: Promise<void> | null = null
 let _retryCount = 0
 const MAX_RETRIES = 1
 
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
@@ -498,4 +498,177 @@ export async function getHealthDetail(): Promise<{
   } catch {
     return null
   }
+}
+
+/* ------------------------------------------------------------------
+   User management (admin) + bootstrap
+------------------------------------------------------------------ */
+export interface ApiAdminUser extends ApiUser {
+  status: string
+  employee_code?: string | null
+  branch_code?: string | null
+  branch_name?: string | null
+  mfa_enabled?: boolean
+  last_login: string | null
+  created_at: string
+  roles: Array<{ id: string; name: string; description?: string }>
+}
+
+export interface RoleMeta {
+  roles: string[]
+  branches: Array<{ code: string; name: string }>
+}
+
+export async function getRoleMeta(): Promise<RoleMeta> {
+  return apiFetch<RoleMeta>('/api/v1/users/meta/reference')
+}
+
+export interface HasUsersResponse {
+  hasUsers: boolean
+  totalUsers: number
+}
+
+export async function hasUsers(): Promise<HasUsersResponse> {
+  return apiFetch<HasUsersResponse>('/api/v1/auth/has-users')
+}
+
+export async function bootstrapAdmin(input: {
+  name: string
+  email: string
+  password: string
+  department?: string
+  jobTitle?: string
+}): Promise<LoginResponse> {
+  const data = await apiFetch<LoginResponse>('/api/v1/auth/bootstrap-admin', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: input.name,
+      email: input.email,
+      password: input.password,
+      department: input.department,
+      job_title: input.jobTitle,
+    }),
+  })
+  setTokens(data.accessToken, data.refreshToken)
+  localStorage.setItem('sentinel_user', JSON.stringify(data.user))
+  return data
+}
+
+export async function adminCreateUser(input: {
+  name: string
+  email: string
+  password: string
+  role: string
+  department?: string
+  jobTitle?: string
+  employeeCode?: string
+  branchCode?: string
+  branchName?: string
+  mfaEnabled?: boolean
+}): Promise<ApiAdminUser> {
+  return apiFetch<ApiAdminUser>('/api/v1/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: input.name,
+      email: input.email,
+      password: input.password,
+      role: input.role,
+      department: input.department,
+      job_title: input.jobTitle,
+      employee_code: input.employeeCode || undefined,
+      branch_code: input.branchCode || undefined,
+      branch_name: input.branchName || undefined,
+      mfa_enabled: input.mfaEnabled ?? false,
+    }),
+  })
+}
+
+export async function adminUpdateUser(
+  id: string,
+  patch: {
+    name?: string
+    department?: string
+    jobTitle?: string
+    status?: string
+    password?: string
+    role?: string
+  },
+): Promise<ApiAdminUser> {
+  return apiFetch<ApiAdminUser>(`/api/v1/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      name: patch.name,
+      department: patch.department,
+      job_title: patch.jobTitle,
+      status: patch.status,
+      password: patch.password,
+      role: patch.role,
+    }),
+  })
+}
+
+export async function adminDeactivateUser(id: string): Promise<{ id: string; status: string }> {
+  return apiFetch<{ id: string; status: string }>(`/api/v1/users/${id}`, { method: 'DELETE' })
+}
+
+/* ------------------------------------------------------------------
+   Telemetry API
+------------------------------------------------------------------ */
+export interface ApiTelemetryEvent {
+  id: string
+  user_id: string
+  event_type: string
+  source: string
+  occurred_at: string
+  received_at: string
+  ip_address?: string | null
+  location?: string | null
+  latitude?: string | null
+  longitude?: string | null
+  accuracy_m?: number | null
+  device?: string | null
+  resource?: string | null
+  application?: string | null
+  metadata?: Record<string, unknown>
+  risk_contribution?: number
+}
+
+export async function getTelemetry(params?: {
+  user_id?: string
+  event_type?: string
+  source?: string
+  page?: number
+  page_size?: number
+}): Promise<ApiTelemetryEvent[]> {
+  const qs = new URLSearchParams()
+  if (params?.user_id) qs.set('user_id', params.user_id)
+  if (params?.event_type) qs.set('event_type', params.event_type)
+  if (params?.source) qs.set('source', params.source)
+  if (params?.page) qs.set('page', String(params.page))
+  if (params?.page_size) qs.set('page_size', String(params.page_size))
+  const query = qs.toString()
+  return apiFetch<ApiTelemetryEvent[]>(`/api/v1/telemetry${query ? `?${query}` : ''}`)
+}
+
+export interface ApiAgentKey {
+  id: string
+  label?: string | null
+  user_id: string
+  key: string
+  created_at: string
+}
+
+export async function createAgentKey(input: { label: string; userId: string }): Promise<ApiAgentKey> {
+  return apiFetch<ApiAgentKey>('/api/v1/telemetry/agent-keys', {
+    method: 'POST',
+    body: JSON.stringify({ label: input.label, user_id: input.userId }),
+  })
+}
+
+export async function listAgentKeys(): Promise<Array<{ id: string; label?: string | null; user_id: string; active: boolean; last_used_at?: string | null; created_at: string }>> {
+  return apiFetch('/api/v1/telemetry/agent-keys')
+}
+
+export async function revokeAgentKey(id: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/telemetry/agent-keys/${id}`, { method: 'DELETE' })
 }

@@ -51,7 +51,7 @@ def test_get_me_unauthorized(client):
     """Test get current user without auth."""
     response = client.get("/api/v1/auth/me")
     
-    assert response.status_code == 403  # HTTPBearer returns 403 when no credentials
+    assert response.status_code == 401  # HTTPBearer auto_error returns 401 when no credentials
 
 
 def test_refresh_token(client, test_user):

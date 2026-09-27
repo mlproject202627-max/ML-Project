@@ -6,6 +6,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
+import uuid as uuid_mod
+
 from app.core.config import settings
 from app.core.database import get_db
 
@@ -70,8 +72,18 @@ async def get_current_user(
             detail="Invalid token payload",
         )
     
+    # Parse as UUID so the query works on both PostgreSQL (native UUID) and
+    # SQLite (tests), where a raw string fails with 'str' has no attribute hex.
+    try:
+        user_uuid = uuid_mod.UUID(str(user_id))
+    except (ValueError, AttributeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    
     from app.models.user import User
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_uuid).first()
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

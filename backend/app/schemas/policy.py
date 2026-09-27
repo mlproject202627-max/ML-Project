@@ -1,6 +1,14 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
+from uuid import UUID
+
+
+def _coerce_uuid(value):
+    """Accept UUID objects from SQLAlchemy and coerce them to str."""
+    if isinstance(value, UUID):
+        return str(value)
+    return value
 
 
 class PolicyResponse(BaseModel):
@@ -15,6 +23,8 @@ class PolicyResponse(BaseModel):
     updated_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+    _coerce = field_validator("id", "created_by", "updated_by", mode="before")(_coerce_uuid)
 
     class Config:
         from_attributes = True

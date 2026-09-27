@@ -12,7 +12,7 @@ from app.core.database import SessionLocal, engine, Base
 from app.core.security import hash_password
 from app.models.user import User, Role, user_roles
 from app.models.activity import Activity
-from app.models.anomaly import Anomaly
+from app.models.anomaly import Anomaly, ACTIVE_ALERT_STATUSES
 from app.models.risk_event import RiskEvent
 from app.models.investigation import Investigation, InvestigationEvent
 from app.models.detection_policy import DetectionPolicy
@@ -168,7 +168,7 @@ def seed_anomalies(db: Session, users: list):
                 anomaly_score=round(risk_score / 100, 3),
                 confidence=round(random.uniform(0.6, 0.99), 2),
                 description=f"Demo: {random.choice(DEMO_DETECTION_TYPES).replace('_', ' ').title()} detected for {user.name}",
-                status=random.choice(["OPEN", "IN_REVIEW", "RESOLVED"]),
+                status=random.choice(sorted(ACTIVE_ALERT_STATUSES) + ["RESOLVED"]),
                 detected_at=detected_at,
             )
             db.add(anomaly)

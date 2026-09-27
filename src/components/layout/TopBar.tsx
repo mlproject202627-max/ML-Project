@@ -23,6 +23,7 @@ export function TopBar({
   searchRef,
   sidebarCollapsed,
   onToggleSidebar,
+  onOpenSettings,
 }: {
   breadcrumbs: React.ReactNode
   searchQuery: string
@@ -30,6 +31,7 @@ export function TopBar({
   searchRef?: React.RefObject<HTMLInputElement | null>
   sidebarCollapsed: boolean
   onToggleSidebar: () => void
+  onOpenSettings?: () => void
 }) {
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -203,6 +205,10 @@ export function TopBar({
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  setShowProfile(false)
+                  onOpenSettings?.()
+                }}
                 className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]"
               >
                 <Settings className="size-3.5" /> Settings

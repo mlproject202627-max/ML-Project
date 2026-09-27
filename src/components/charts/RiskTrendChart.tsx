@@ -13,6 +13,11 @@ import { GRAPH } from '../../lib/utils'
 import { TooltipShell } from './ChartTooltip'
 
 export function RiskTrendChart({ data, height = 240 }: { data: TrendPoint[]; height?: number }) {
+  // Rendered only when the caller actually has a baseline series. Drawing a
+  // zero-filled line in its absence would put a flat line at the floor in
+  // front of an analyst with no way to tell it apart from a real measurement
+  // of "nothing unusual".
+  const hasBaseline = data.some((p) => typeof p.baseline === 'number')
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
@@ -63,7 +68,9 @@ export function RiskTrendChart({ data, height = 240 }: { data: TrendPoint[]; hei
                 rows={[
                   { label: 'Anomalies', value: p.anomalies, color: GRAPH.primary },
                   { label: 'Mean risk', value: p.meanRisk.toFixed(1), color: GRAPH.secondary },
-                  { label: 'Baseline', value: p.baseline.toFixed(1), color: GRAPH.neutral },
+                  ...(hasBaseline
+                    ? [{ label: 'Baseline', value: (p.baseline ?? 0).toFixed(1), color: GRAPH.neutral }]
+                    : []),
                 ]}
               />
             )
@@ -87,15 +94,17 @@ export function RiskTrendChart({ data, height = 240 }: { data: TrendPoint[]; hei
           dot={false}
           activeDot={{ r: 3.5, fill: GRAPH.alert, stroke: '#000000', strokeWidth: 2 }}
         />
-        <Line
-          yAxisId="left"
-          type="monotone"
-          dataKey="baseline"
-          stroke={GRAPH.neutral}
-          strokeWidth={1.2}
-          strokeDasharray="4 4"
-          dot={false}
-        />
+        {hasBaseline && (
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="baseline"
+            stroke={GRAPH.neutral}
+            strokeWidth={1.2}
+            strokeDasharray="4 4"
+            dot={false}
+          />
+        )}
       </ComposedChart>
     </ResponsiveContainer>
   )

@@ -9,17 +9,31 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { alerts, events, heatmap } from '../../data/mock'
 import type { ActivityEvent } from '../../data/types'
 import { KIND_META } from '../../data/mock'
 import { GRAPH, clockTime, cn } from '../../lib/utils'
 import { Panel } from '../ui/Panel'
 import { Chip } from '../ui/Badge'
+import { ErrorState } from '../ui/ErrorState'
+import { LoadingState } from '../ui/LoadingState'
 import { ActivityHeatmap } from '../charts/ActivityHeatmap'
 import { EventFeed } from '../lists/EventFeed'
 import { TooltipShell } from '../charts/ChartTooltip'
+import { activityFromTimelineList, alertsFromApi } from '../../lib/adapters'
+import { getThreatTimeline, listAlerts } from '../../lib/adminApi'
+import { useApiResource } from '../../lib/useApi'
 
 type FeedFilter = 'all' | ActivityEvent['verdict']
+
+/**
+ * How many telemetry rows the panel aggregates over.
+ *
+ * The two charts below bucket these rows by weekday and by clock hour, so the
+ * shape they draw is only as honest as the sample behind it. The server caps a
+ * page at 200; asking for the cap makes the picture representative of recent
+ * activity rather than of the last handful of events.
+ */
+const WINDOW = 200
 
 export function Timeline({ live, onSelectAlert, onSelectEmployee }: {
   live: boolean
@@ -28,39 +42,86 @@ export function Timeline({ live, onSelectAlert, onSelectEmployee }: {
 }) {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('all')
 
-  const heatGrid = useMemo(() => {
-    const out: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0))
-    for (const c of heatmap) out[c.day][c.hour] = c.intensity
-    return out
-  }, [])
-
-  const hourly = useMemo(() => {
-    const totals = Array(24).fill(0) as number[]
-    for (const c of heatmap) totals[c.hour] += c.intensity
-    return totals.map((v, h) => ({ hour: `${String(h).padStart(2, '0')}`, value: Math.round(v / 7) }))
-  }, [])
-
-  const timeline = useMemo(
-    () => [...alerts].sort((a, b) => b.detectedAt.localeCompare(a.detectedAt)).slice(0, 8),
+  const alertsRes = useApiResource(
+    () => listAlerts({ sort: 'recent', page_size: 100 }),
+    [],
+  )
+  const eventsRes = useApiResource(
+    () => getThreatTimeline({ page_size: WINDOW }),
     [],
   )
 
+  const recentAlerts = useMemo(
+    () => (alertsRes.data ? alertsFromApi(alertsRes.data.items) : []),
+    [alertsRes.data],
+  )
+  const events = useMemo(
+    () => (eventsRes.data ? activityFromTimelineList(eventsRes.data.items) : []),
+    [eventsRes.data],
+  )
+
+  // Both charts are aggregations of the events actually retrieved, not a
+  // separate dataset — there is no second source for "access intensity", and
+  // drawing one from anything else would be inventing it.
+  const heatGrid = useMemo(() => {
+    const out: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0))
+    for (const ev of events) {
+      const d = new Date(ev.ts)
+      if (Number.isNaN(d.getTime())) continue
+      const day = (d.getUTCDay() + 6) % 7 // Monday-first
+      out[day][d.getUTCHours()] += 1
+    }
+    const peak = Math.max(1, ...out.flat())
+    return out.map((row) => row.map((v) => Math.round((v / peak) * 100)))
+  }, [events])
+
+  const hourly = useMemo(() => {
+    const totals = Array(24).fill(0) as number[]
+    for (const ev of events) {
+      const d = new Date(ev.ts)
+      if (Number.isNaN(d.getTime())) continue
+      totals[d.getUTCHours()] += 1
+    }
+    return totals.map((v, h) => ({ hour: `${String(h).padStart(2, '0')}`, value: v }))
+  }, [events])
+
+  const timeline = useMemo(() => recentAlerts.slice(0, 8), [recentAlerts])
+
   const filteredEvents = useMemo(
     () => (feedFilter === 'all' ? events : events.filter((e) => e.verdict === feedFilter)),
-    [feedFilter],
+    [feedFilter, events],
   )
 
   const sevColor = (s: string) => ({ critical: '#DC2626', high: '#D97706', medium: '#2563EB', low: '#737373' }[s] || '#737373')
 
+  if (alertsRes.loading || eventsRes.loading) {
+    return (
+      <div className="space-y-4">
+        <TimelineHeading />
+        <LoadingState rows={6} />
+      </div>
+    )
+  }
+
+  if (alertsRes.error || eventsRes.error) {
+    return (
+      <div className="space-y-4">
+        <TimelineHeading />
+        <ErrorState
+          title="Could not load the activity timeline"
+          description={alertsRes.error ?? eventsRes.error ?? ''}
+          onRetry={() => {
+            alertsRes.reload()
+            eventsRes.reload()
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
-      {/* Page heading */}
-      <div className="mb-2">
-        <h1 className="text-[20px] font-bold text-[var(--color-text)]">Activity Timeline</h1>
-        <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
-          Review chronological activity across users and systems.
-        </p>
-      </div>
+      <TimelineHeading />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <Panel className="xl:col-span-7" title="Access intensity by weekday and hour" subtitle="Aggregated across all monitored identities">
@@ -107,7 +168,7 @@ export function Timeline({ live, onSelectAlert, onSelectEmployee }: {
           <ol className="relative px-4 py-4">
             <span className="absolute top-6 bottom-6 left-[26px] w-px bg-gradient-to-b from-[var(--color-border)] via-[var(--color-border)] to-transparent" />
             {timeline.map((a) => {
-              const emp = a.employeeId
+              const subjectId = a.employeeId
               const hex = sevColor(a.severity)
               return (
                 <li key={a.id} className="relative flex gap-4 pb-5 last:pb-0">
@@ -132,10 +193,10 @@ export function Timeline({ live, onSelectAlert, onSelectEmployee }: {
                     <p className="mt-0.5 truncate text-[10px] text-[var(--color-text-faint)]">
                       <button
                         type="button"
-                        onClick={() => onSelectEmployee(emp)}
+                        onClick={() => onSelectEmployee(subjectId)}
                         className="text-[var(--color-text-muted)] underline decoration-dotted underline-offset-2 hover:text-[var(--color-text)]"
                       >
-                        {emp}
+                        {a.employeeName ?? subjectId}
                       </button>{' '}
                       · {a.asset}
                     </p>
@@ -163,9 +224,9 @@ export function Timeline({ live, onSelectAlert, onSelectEmployee }: {
 
       <Panel title="Anomaly class reference" subtitle="What each detector family looks for" padded={false}>
         <div className="grid grid-cols-1 divide-y divide-[var(--color-border)] md:grid-cols-2 md:divide-y-0 xl:grid-cols-4">
-          {(['off_hours_access', 'lateral_movement', 'peer_deviation', 'privilege_escalation', 'impossible_travel', 'dormant_revival', 'resource_sweeping', 'session_anomaly'] as const).map((k) => {
+          {(Object.keys(KIND_META) as (keyof typeof KIND_META)[]).map((k) => {
             const meta = KIND_META[k]
-            const count = alerts.filter((a) => a.kind === k).length
+            const count = recentAlerts.filter((a) => a.kind === k).length
             return (
               <div key={k} className={cn('border-[var(--color-border)] p-3.5 transition-colors duration-150 hover:bg-[var(--color-hover)]', 'md:border-r md:last:border-r-0 xl:border-b-0')}>
                 <div className="flex items-center gap-2">
@@ -179,6 +240,17 @@ export function Timeline({ live, onSelectAlert, onSelectEmployee }: {
           })}
         </div>
       </Panel>
+    </div>
+  )
+}
+
+function TimelineHeading() {
+  return (
+    <div className="mb-2">
+      <h1 className="text-[20px] font-bold text-[var(--color-text)]">Activity Timeline</h1>
+      <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
+        Review chronological activity across users and systems.
+      </p>
     </div>
   )
 }

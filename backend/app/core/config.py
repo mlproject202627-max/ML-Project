@@ -16,12 +16,19 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = '["http://localhost:3000","http://localhost:5173"]'
     
+    # Endpoint agent authentication (X-Agent-Key header)
+    AGENT_API_KEY: str = ""  # optional shared bootstrap key; per-user keys preferred
+
     # Environment
     ENVIRONMENT: str = "development"
-    
+
+    # ML model artefact. Read by `ml.anomaly`; the default lives beside the
+    # code so a fresh checkout trains and loads from the same place.
+    MODEL_PATH: str = ""
+
     # Redis (optional)
     REDIS_URL: str = "redis://localhost:6379"
-    
+
     @property
     def cors_origins_list(self) -> List[str]:
         try:

@@ -15,6 +15,12 @@ export type AnomalyKind =
   | 'dormant_revival'
   | 'resource_sweeping'
   | 'session_anomaly'
+  /* Added when the queue began reading live detections. The rule engine has
+     families this taxonomy had no honest home for, and filing a removable-media
+     transfer under `resource_sweeping` because nothing else fit would mislabel
+     the most serious thing the system detects. */
+  | 'data_exfiltration'
+  | 'correlated_anomaly'
 
 export type AlertStatus = 'new' | 'investigating' | 'contained' | 'dismissed'
 
@@ -79,6 +85,16 @@ export interface Alert {
   factors: ContributingFactor[]
   /** Model that raised it */
   detector: string
+  /* -- subject identity ------------------------------------------------
+     Populated from the detection record itself. The queue previously
+     resolved the subject through a client-side directory keyed by mock
+     employee id, which finds nothing once the ids are real UUIDs. */
+  employeeName?: string
+  /** Organisational department as recorded on the identity. Deliberately a
+   *  plain string: the `Department` union below is the UI's own grouping and
+   *  a backend value that is not a member of it would break the lookup. */
+  employeeDepartment?: string
+  employeeInitials?: string
 }
 
 export interface Employee {
@@ -108,7 +124,9 @@ export interface TrendPoint {
   label: string
   anomalies: number
   meanRisk: number
-  baseline: number
+  /** Omitted when no baseline series exists. The chart skips the series
+   *  entirely rather than drawing a zero line that reads as a measurement. */
+  baseline?: number
 }
 
 export interface HeatCell {
@@ -121,11 +139,15 @@ export interface HeatCell {
 export interface ActivityEvent {
   id: string
   employeeId: string
+  /** ISO timestamp. Formatted at the render site, not here. */
   ts: string
   action: string
   target: string
   verdict: 'normal' | 'notable' | 'suspicious'
   risk: number
+  /** Subject's display name, carried on the event itself. */
+  employeeName?: string
+  employeeInitials?: string
 }
 
 export interface DetectorHealth {

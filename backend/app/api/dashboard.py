@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.dependencies import require_security_read
 from app.models.user import User
-from app.models.anomaly import Anomaly
+from app.models.anomaly import Anomaly, ACTIVE_ALERT_STATUSES
 from app.models.risk_event import RiskEvent
 from app.schemas.dashboard import (
     DashboardResponse, DashboardMetrics, TrendPoint,
@@ -18,12 +18,12 @@ router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 @router.get("", response_model=DashboardResponse)
 def get_dashboard(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_security_read),
     db: Session = Depends(get_db),
 ):
     # Core metrics
     open_alerts = db.query(func.count(Anomaly.id)).filter(
-        Anomaly.status.in_(["OPEN", "IN_REVIEW", "ESCALATED"])
+        Anomaly.status.in_(ACTIVE_ALERT_STATUSES)
     ).scalar() or 0
     
     identities_watched = db.query(func.count(User.id)).filter(
@@ -75,7 +75,7 @@ def get_dashboard(
     
     # Priority triage (top 10 open anomalies by risk)
     triage_rows = db.query(Anomaly).filter(
-        Anomaly.status.in_(["OPEN", "IN_REVIEW", "ESCALATED"])
+        Anomaly.status.in_(ACTIVE_ALERT_STATUSES)
     ).order_by(Anomaly.risk_score.desc()).limit(10).all()
     
     priority_triage = [

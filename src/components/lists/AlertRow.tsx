@@ -1,5 +1,5 @@
 import { ChevronRight, Clock } from 'lucide-react'
-import { KIND_META, employeeById } from '../../data/mock'
+import { KIND_META } from '../../data/mock'
 import type { Alert } from '../../data/types'
 import { relativeTime, riskTone } from '../../lib/utils'
 import { Avatar } from '../ui/Avatar'
@@ -12,7 +12,13 @@ export function AlertRow({ alert, onOpen, variant = 'compact', active = false }:
   variant?: 'compact' | 'full'
   active?: boolean
 }) {
-  const emp = employeeById(alert.employeeId)
+  // The subject's identity travels on the alert itself. It used to be looked
+  // up in a client-side directory keyed by mock employee id, which silently
+  // resolves to nothing now that the ids are server UUIDs — an alert naming
+  // "undefined" in the queue is worse than one that omits the name.
+  const name = alert.employeeName
+  const department = alert.employeeDepartment
+  const initials = alert.employeeInitials
   const kind = KIND_META[alert.kind]
   const tone = riskTone(alert.riskScore)
 
@@ -29,8 +35,8 @@ export function AlertRow({ alert, onOpen, variant = 'compact', active = false }:
         style={{ background: tone.hex }}
       />
 
-      {variant === 'full' && emp && (
-        <Avatar initials={emp.initials} department={emp.department} size={32} ring={sevHex(alert.severity)} />
+      {variant === 'full' && initials && (
+        <Avatar initials={initials} size={32} ring={sevHex(alert.severity)} />
       )}
 
       <div className="min-w-0 flex-1">
@@ -43,8 +49,8 @@ export function AlertRow({ alert, onOpen, variant = 'compact', active = false }:
             <span className="size-1.5 rounded-[3px]" style={{ background: kind.color }} />
             {kind.short}
           </span>
-          {variant === 'full' && emp && (
-            <span className="truncate">{emp.name} · {emp.department}</span>
+          {variant === 'full' && name && (
+            <span className="truncate">{name}{department ? ` · ${department}` : ''}</span>
           )}
           <span className="flex items-center gap-1">
             <Clock className="size-2.5" />

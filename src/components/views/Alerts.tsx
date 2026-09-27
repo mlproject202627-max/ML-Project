@@ -1,15 +1,32 @@
 import { useMemo, useState } from 'react'
 import { ArrowUpDown, Filter, Search } from 'lucide-react'
-import { KIND_META, SEVERITY_META, alerts } from '../../data/mock'
+import { KIND_META, SEVERITY_META } from '../../data/mock'
 import type { AlertStatus, AnomalyKind, Severity } from '../../data/types'
 import { Chip } from '../ui/Badge'
 import { Panel } from '../ui/Panel'
 import { Segmented } from '../ui/Segmented'
 import { AlertRow } from '../lists/AlertRow'
+import { ErrorState } from '../ui/ErrorState'
+import { LoadingState } from '../ui/LoadingState'
+import { alertsFromApi } from '../../lib/adapters'
+import { listAlerts } from '../../lib/adminApi'
+import { useApiResource } from '../../lib/useApi'
 import { cn } from '../../lib/utils'
 
 const SEVERITIES: Severity[] = ['critical', 'high', 'medium', 'low']
 const STATUSES: AlertStatus[] = ['new', 'investigating', 'contained', 'dismissed']
+
+/**
+ * One page, filtered in the browser.
+ *
+ * The API can filter by status and severity, but the severity cards below are
+ * both filters *and* counters — filtering server-side would zero the other
+ * three cards and make the row useless. So the request asks only for the sort
+ * order the server can apply across the whole table, and the facets stay
+ * client-side. The page cap is why the subtitle reports "of N" using the
+ * server's total rather than the loaded length.
+ */
+const PAGE_SIZE = 100
 
 export function Alerts({ query, onSelectAlert, selectedAlertId }: {
   query: string
@@ -21,17 +38,29 @@ export function Alerts({ query, onSelectAlert, selectedAlertId }: {
   const [kind, setKind] = useState<AnomalyKind | 'all'>('all')
   const [sort, setSort] = useState<'risk' | 'recent' | 'confidence'>('risk')
 
+  const { data, error, loading, reload } = useApiResource(
+    () =>
+      listAlerts({
+        sort: sort === 'recent' ? 'recent' : 'risk',
+        page_size: PAGE_SIZE,
+      }),
+    [sort],
+  )
+
+  const rows = useMemo(() => (data ? alertsFromApi(data.items) : []), [data])
+  const total = data?.total ?? rows.length
+
   const counts = useMemo(() => {
     const out = { critical: 0, high: 0, medium: 0, low: 0 } as Record<Severity, number>
-    for (const a of alerts) out[a.severity] += 1
+    for (const a of rows) out[a.severity] += 1
     return out
-  }, [])
+  }, [rows])
 
-  const kinds = useMemo(() => [...new Set(alerts.map((a) => a.kind))] as AnomalyKind[], [])
+  const kinds = useMemo(() => [...new Set(rows.map((a) => a.kind))] as AnomalyKind[], [rows])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return alerts
+    const list = rows
       .filter((a) => (severity === 'all' ? true : a.severity === severity))
       .filter((a) => (status === 'all' ? true : a.status === status))
       .filter((a) => (kind === 'all' ? true : a.kind === kind))
@@ -44,12 +73,9 @@ export function Alerts({ query, onSelectAlert, selectedAlertId }: {
             KIND_META[a.kind].label.toLowerCase().includes(q)
           : true,
       )
-      .sort((a, b) => {
-        if (sort === 'recent') return b.detectedAt.localeCompare(a.detectedAt)
-        if (sort === 'confidence') return b.confidence - a.confidence
-        return b.riskScore - a.riskScore
-      })
-  }, [severity, status, kind, sort, query])
+    if (sort === 'confidence') list.sort((a, b) => b.confidence - a.confidence)
+    return list
+  }, [rows, severity, status, kind, sort, query])
 
   const sevColors: Record<Severity, { bg: string; border: string; text: string; dot: string }> = {
     critical: { bg: 'bg-[var(--color-critical-bg)]', border: 'ring-[var(--color-critical-border)]', text: 'text-[var(--color-critical)]', dot: 'bg-[var(--color-critical)]' },
@@ -97,7 +123,7 @@ export function Alerts({ query, onSelectAlert, selectedAlertId }: {
 
       <Panel
         title="Anomaly queue"
-        subtitle={`${filtered.length} of ${alerts.length} detections match the current filters`}
+        subtitle={`${filtered.length} of ${total} detections match the current filters`}
         padded={false}
         actions={
           <div className="flex items-center gap-2">
@@ -142,8 +168,22 @@ export function Alerts({ query, onSelectAlert, selectedAlertId }: {
           )}
         </div>
 
-        {filtered.length === 0 ? (
-          <p className="px-4 py-14 text-center text-[12px] text-[var(--color-text-faint)]">No detections match these filters.</p>
+        {loading ? (
+          <div className="p-4">
+            <LoadingState rows={6} />
+          </div>
+        ) : error ? (
+          <ErrorState
+            title="Could not load the alert queue"
+            description={error}
+            onRetry={reload}
+          />
+        ) : filtered.length === 0 ? (
+          <p className="px-4 py-14 text-center text-[12px] text-[var(--color-text-faint)]">
+            {rows.length === 0
+              ? 'No detections recorded yet. Run a demonstration scenario to generate activity.'
+              : 'No detections match these filters.'}
+          </p>
         ) : (
           <div>
             {filtered.map((a) => (

@@ -31,6 +31,9 @@ const Models = lazy(() =>
 const Settings = lazy(() =>
   import('./components/views/Settings').then((m) => ({ default: m.Settings })),
 )
+const BankPortal = lazy(() =>
+  import('./components/views/BankPortal').then((m) => ({ default: m.default })),
+)
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -95,6 +98,17 @@ export default function App() {
   }
 
   /* ── Main App Shell ── */
+  // Banking employees get the customer-facing portal; admin & security roles
+  // get the Sentinel command center. Banking staff never see security controls.
+  const BANKING_ROLES = ['TELLER', 'RELATIONSHIP_MANAGER', 'BRANCH_MANAGER', 'COMPLIANCE_OFFICER', 'OPERATIONS_MANAGER']
+  if (BANKING_ROLES.includes(user.role)) {
+    return (
+      <Suspense fallback={<DashboardSkeleton />}>
+        <BankPortal />
+      </Suspense>
+    )
+  }
+
   const item = navItem(view)
 
   return (
@@ -117,6 +131,7 @@ export default function App() {
           searchRef={searchRef}
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onOpenSettings={() => navigate('settings')}
         />
 
         {/* Page content */}

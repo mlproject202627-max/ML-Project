@@ -1,71 +1,41 @@
-import random
-from typing import List
-from app.ml.interface import AnomalyDetector, Prediction, PredictionSignal
+"""QUARANTINED — do not use.
+
+This module previously exported `detector = MockAnomalyDetector()`, which
+returned `random.uniform(0.0, 1.0)` as an anomaly score, `random.choice` for a
+detection type, and random per-signal contributions. It also reported
+`is_ready() == True`.
+
+That combination is a trap, not a convenience. `is_ready()` returning True meant
+any code that adopted it would report itself operational while emitting pure
+noise, and in a security system the failure mode of noise is not "no detection"
+— it is alerts that name an employee, carry a risk score, and mean nothing.
+Analysts who are shown enough of those stop reading the queue, which costs more
+than having no queue at all.
+
+It was never wired in: nothing in the application imported this module or
+`app.ml.interface`. The real detector is `ml/anomaly.py`
+(`IsolationForestDetector`), reached through `app.services.detection`.
+
+The implementation is preserved in git history. Anything still reaching for
+this module fails loudly here rather than silently producing numbers.
+"""
 
 
-class MockAnomalyDetector(AnomalyDetector):
-    """Mock anomaly detector for development and testing.
-    
-    Returns random predictions. Replace with actual ML model
-    for production use.
-    """
-    
-    DETECTION_TYPES = [
-        "OFF_HOURS_ACCESS",
-        "LATERAL_MOVEMENT",
-        "DORMANT_ACCOUNT_REVIVAL",
-        "RESOURCE_SNOOPING",
-        "PRIVILEGE_ESCALATION",
-        "IMPOSSIBLE_TRAVEL",
-        "PEER_GROUP_DEVIATION",
-        "SESSION_ANOMALY",
-    ]
-    
-    SIGNAL_TYPES = [
-        "OFF_HOURS_ACCESS",
-        "PEER_GROUP_DEVIATION",
-        "PRIVILEGE_ESCALATION",
-        "RESOURCE_ACCESS",
-        "LOCATION_ANOMALY",
-        "SESSION_BEHAVIOR",
-    ]
-    
-    def predict(self, features: dict) -> Prediction:
-        """Generate a mock prediction."""
-        anomaly_score = round(random.uniform(0.0, 1.0), 3)
-        risk_score = round(anomaly_score * 100, 1)
-        confidence = round(random.uniform(0.5, 0.99), 2)
-        detection_type = random.choice(self.DETECTION_TYPES)
-        
-        # Generate 2-4 random signals
-        num_signals = random.randint(2, 4)
-        remaining_weight = 1.0
-        signals = []
-        
-        for i in range(num_signals):
-            if i == num_signals - 1:
-                weight = remaining_weight
-            else:
-                weight = round(random.uniform(0.1, remaining_weight / 2), 2)
-                remaining_weight -= weight
-            
-            signals.append(PredictionSignal(
-                type=random.choice(self.SIGNAL_TYPES),
-                contribution=round(weight * anomaly_score, 3),
-            ))
-        
-        return Prediction(
-            user_id=features.get("user_id", "unknown"),
-            anomaly_score=anomaly_score,
-            risk_score=risk_score,
-            confidence=confidence,
-            detection_type=detection_type,
-            signals=signals,
+class MockAnomalyDetector:  # pragma: no cover - retained only to fail loudly
+    """Retained as a named error so an old import gives a clear message."""
+
+    def __init__(self, *args, **kwargs):
+        raise RuntimeError(
+            "MockAnomalyDetector has been removed. It returned random anomaly "
+            "scores and reported itself ready. Use ml.anomaly.get_detector() — "
+            "the Isolation Forest wired into the risk engine — or the rule "
+            "engine alone, which needs no model. See docs/ml.md."
         )
-    
-    def is_ready(self) -> bool:
-        return True
 
 
-# Global instance
-detector = MockAnomalyDetector()
+def detector(*args, **kwargs):  # pragma: no cover - retained only to fail loudly
+    """Formerly a module-level instance; now a call that refuses to exist."""
+    raise RuntimeError(
+        "app.ml.adapter.detector has been removed. See docs/ml.md for the "
+        "detectors that actually score risk."
+    )

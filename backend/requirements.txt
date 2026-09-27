@@ -22,3 +22,5 @@ pytest>=8.0.0
 pytest-asyncio>=0.24.0
 greenlet>=3.0.0
 psycopg2-binary>=2.9.0
+psycopg[binary]>=3.2
+greenlet>=3.0

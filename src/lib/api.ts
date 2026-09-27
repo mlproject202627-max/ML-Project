@@ -1,4 +1,11 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+/**
+ * Backend origin. `VITE_API_URL` is the override for any deployment; when it is
+ * unset we fall back to the production backend, except on the Vite dev server,
+ * which keeps pointing at localhost.
+ */
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? 'http://localhost:8000' : 'https://ml-project-production-6a72.up.railway.app')
 
 /* ------------------------------------------------------------------
    Token management

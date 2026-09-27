@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS
-    CORS_ORIGINS: str = '["http://localhost:3000","http://localhost:5173"]'
+    CORS_ORIGINS: str = '["http://localhost:3000","http://localhost:5173","https://airy-stillness-production-cac9.up.railway.app"]'
     
     # Endpoint agent authentication (X-Agent-Key header)
     AGENT_API_KEY: str = ""  # optional shared bootstrap key; per-user keys preferred
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         try:
             return json.loads(self.CORS_ORIGINS)
         except (json.JSONDecodeError, TypeError):
-            return ["http://localhost:3000", "http://localhost:5173"]
+            return ["http://localhost:3000", "http://localhost:5173", "https://airy-stillness-production-cac9.up.railway.app"]
     
     class Config:
         env_file = ".env"

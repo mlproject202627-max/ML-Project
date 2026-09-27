@@ -93,6 +93,19 @@ no running database. It is not a subset of the application's behaviour: the
 detection pipeline is tested by driving real events through the real rule
 engine and the real risk scorer.
 
+## Live deployment
+
+| Service | URL |
+| --- | --- |
+| Frontend (security console) | https://airy-stillness-production-cac9.up.railway.app/ |
+| Backend API | https://ml-project-production-6a72.up.railway.app/ |
+
+- The frontend ships the backend origin as its default API base, so no runtime
+  configuration is needed. `VITE_API_URL` overrides it for any other deployment.
+- The backend allows the frontend origin by default via `CORS_ORIGINS`; set the
+  variable in the Railway service if you need to change it without a redeploy.
+- API docs: https://ml-project-production-6a72.up.railway.app/docs
+
 ## The demonstration
 
 The eight scenarios from the specification are runnable from the console or the

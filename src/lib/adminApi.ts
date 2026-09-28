@@ -140,7 +140,16 @@ export function listEmployees(params?: {
   return apiFetch(`${BASE}/employees${qs(params ?? {})}`)
 }
 
-/** Everything the employee-monitoring view shows, assembled server-side. */
+/**
+ * Everything the employee-monitoring view shows, assembled server-side.
+ *
+ * Key-for-key with the dict `employee_detail` returns
+ * (`backend/app/api/admin.py`). The first revision of this interface named
+ * fields the endpoint has never produced — `locations`, `devices`,
+ * `activity`, `statistics` — so the drawer crashed on `undefined.map` the
+ * moment it rendered. Renamed here rather than reshaped server-side: the
+ * response is already the shape nine other consumers would have to follow.
+ */
 export interface EmployeeDetail {
   employee: {
     id: string
@@ -167,14 +176,37 @@ export interface EmployeeDetail {
   }
   riskHistory: { score: number; level: string; change: number; timestamp?: string | null }[]
   alerts: AlertSummary[]
-  activity: TimelineEvent[]
-  locations: { city: string; count: number }[]
-  devices: { device: string; count: number }[]
-  customers: { customer: string; count: number }[]
-  downloads: { resource: string; count: number }[]
-  usbEvents: { device: string; count: number }[]
+  /** Endpoint serialises activity rows as `timeline` (see `Activity.to_dict`). */
+  timeline: TimelineEvent[]
+  locationHistory: { city: string; count: number }[]
+  deviceHistory: { device: string; count: number }[]
+  customerAccess: { customerId: string; count: number }[]
+  resourceAccess: { resource: string; count: number }[]
+  loginHistory: {
+    eventType: string
+    timestamp?: string | null
+    ipAddress?: string | null
+    city?: string | null
+    country?: string | null
+    device?: string | null
+  }[]
+  /** Individual download events — an aggregate is derived client-side. */
+  downloads: {
+    resource?: string | null
+    classification?: string | null
+    fileSize?: unknown
+    timestamp?: string | null
+  }[]
+  usbEvents: {
+    eventType?: string | null
+    device?: string | null
+    resource?: string | null
+    classification?: string | null
+    timestamp?: string | null
+  }[]
   baseline?: Record<string, unknown> | null
-  statistics: Record<string, number>
+  windowDays: number
+  eventCount: number
 }
 
 export function getEmployeeDetail(employeeId: string, days = 30): Promise<EmployeeDetail> {

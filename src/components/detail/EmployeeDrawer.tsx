@@ -31,6 +31,15 @@ import { relativeTime, riskTone } from '../../lib/utils'
  * table — none of which any endpoint produces, and all of which rendered
  * plausible-looking shapes because the numbers behind them were written by
  * hand.
+ *
+ * Data-flow note: every collection this drawer renders is normalised once,
+ * right after the fetch, through `Array.isArray` guards into a plain local
+ * binding. The JSX below then reads only those bindings — never `data.<key>`
+ * directly — so a missing or null key degrades to an empty panel instead of
+ * throwing during render and blanking the whole app (there is no error
+ * boundary above this drawer; the first version of this file crashed the
+ * entire console on `undefined.map` because it read `data.locations`, a field
+ * the endpoint has never returned).
  */
 export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
   employeeId: string | null
@@ -42,11 +51,76 @@ export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
     [employeeId],
   )
 
+  /* -- Normalisation ---------------------------------------------------
+   * The endpoint returns collections as explicit keys — empty rather than
+   * absent when there is nothing to report — but the drawer is one contract
+   * change or stale cache away from a missing key, and `Array.isArray` is
+   * the honest guard: `??` alone still throws on a `null` that arrived in
+   * the JSON, because `.map` on `null` is a TypeError, not a fallback.
+   * Every derived array below reads through one of these bindings. */
+  const emp = data?.employee ?? null
+
+  /* The engine guarantees a `risk` object (zero-scored when never measured),
+   * but an employee whose assessment has not been written yet could come
+   * back without one, and the dial and meters would throw on
+   * `undefined.toFixed`. Numbers are type-checked rather than trusted. */
+  const risk = useMemo(() => {
+    const r = data?.risk
+    if (r == null || typeof r !== 'object') return null
+    return {
+      score: typeof r.score === 'number' ? r.score : 0,
+      level: r.level ?? 'LOW',
+      change: typeof r.change === 'number' ? r.change : 0,
+      ruleScore: typeof r.ruleScore === 'number' ? r.ruleScore : 0,
+      mlScore: typeof r.mlScore === 'number' ? r.mlScore : 0,
+      baselineScore: typeof r.baselineScore === 'number' ? r.baselineScore : 0,
+      timestamp: r.timestamp ?? null,
+      reasons: Array.isArray(r.reasons) ? r.reasons : ([] as string[]),
+    }
+  }, [data])
+
   const events = useMemo(
-    () => (data ? activityFromTimelineList(data.activity ?? []) : []),
+    () =>
+      data && Array.isArray(data.timeline) ? activityFromTimelineList(data.timeline) : [],
     [data],
   )
-  const alerts = useMemo(() => (data ? alertsFromApi(data.alerts ?? []) : []), [data])
+  const alerts = useMemo(
+    () => (data && Array.isArray(data.alerts) ? alertsFromApi(data.alerts) : []),
+    [data],
+  )
+  const locations = useMemo(
+    () => (data && Array.isArray(data.locationHistory) ? data.locationHistory : []),
+    [data],
+  )
+  const devices = useMemo(
+    () => (data && Array.isArray(data.deviceHistory) ? data.deviceHistory : []),
+    [data],
+  )
+  /* Downloads and USB transfers arrive as individual events, not aggregates;
+   * the per-resource counts the panels show are derived here — the one place
+   * that knows the event shape. */
+  const downloads = useMemo(() => {
+    if (!data || !Array.isArray(data.downloads)) return []
+    const counts = new Map<string, number>()
+    for (const d of data.downloads) {
+      const key = d.resource || 'Unknown resource'
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    return [...counts.entries()].map(([label, count]) => ({ label, count }))
+  }, [data])
+  const usbEvents = useMemo(() => {
+    if (!data || !Array.isArray(data.usbEvents)) return []
+    const counts = new Map<string, number>()
+    for (const u of data.usbEvents) {
+      const key = u.device || 'Unknown device'
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    return [...counts.entries()].map(([label, count]) => ({ label, count }))
+  }, [data])
+  const riskHistory = useMemo(
+    () => (data && Array.isArray(data.riskHistory) ? data.riskHistory : []),
+    [data],
+  )
 
   // 24 hourly buckets, counted from the events actually returned. This is the
   // one "access intensity" figure the data supports; the mock drew an
@@ -63,8 +137,6 @@ export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
 
   if (!employeeId) return null
 
-  const emp = data?.employee
-  const risk = data?.risk
   const tone = riskTone(risk?.score ?? 0)
   const isNight = (h: number) => h < 6 || h >= 22
 
@@ -73,7 +145,7 @@ export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
       open={Boolean(employeeId)}
       onClose={onClose}
       width={520}
-      title={emp ? emp.name : 'Loading…'}
+      title={emp ? emp.name : loading ? 'Loading risk assessment…' : 'Employee'}
       subtitle={
         emp ? (
           <span>
@@ -90,7 +162,18 @@ export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
       ) : error ? (
         <ErrorState title="Could not load this employee" description={error} onRetry={reload} />
       ) : !emp || !risk ? (
-        <span />
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-3 grid size-10 place-items-center rounded-full bg-[var(--color-surface)]">
+            <ShieldAlert className="size-4 text-[var(--color-text-faint)]" />
+          </div>
+          <p className="text-[13px] font-semibold text-[var(--color-text)]">
+            No risk assessment data available.
+          </p>
+          <p className="mt-1 max-w-xs text-[11.5px] leading-relaxed text-[var(--color-text-muted)]">
+            Sentinel has not produced an assessment for this employee yet. Re-run detection from
+            the monitoring queue, then reopen this case file.
+          </p>
+        </div>
       ) : (
         <div className="space-y-5">
           {/* Identity */}
@@ -172,25 +255,25 @@ export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
             <AggregateCard
               icon={<MapPin className="size-3" />}
               title="Locations"
-              rows={data.locations.map((r) => ({ label: r.city, count: r.count }))}
+              rows={locations.map((r) => ({ label: r.city ?? '', count: r.count }))}
               empty="No location variation recorded."
             />
             <AggregateCard
               icon={<Monitor className="size-3" />}
               title="Devices"
-              rows={data.devices.map((r) => ({ label: r.device, count: r.count }))}
+              rows={devices.map((r) => ({ label: r.device ?? '', count: r.count }))}
               empty="No device variation recorded."
             />
             <AggregateCard
               icon={<Download className="size-3" />}
               title="Sensitive downloads"
-              rows={data.downloads.map((r) => ({ label: r.resource, count: r.count }))}
+              rows={downloads}
               empty="No downloads in the window."
             />
             <AggregateCard
               icon={<Usb className="size-3" />}
               title="Removable media"
-              rows={data.usbEvents.map((r) => ({ label: r.device, count: r.count }))}
+              rows={usbEvents}
               empty="No simulated USB activity."
             />
           </div>
@@ -227,7 +310,7 @@ export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
           </div>
 
           {/* Risk history — appended to, never rewritten */}
-          {data.riskHistory.length > 0 && (
+          {riskHistory.length > 0 && (
             <div className="card overflow-hidden">
               <div className="border-b border-[var(--color-border)] px-3.5 py-2.5">
                 <h4 className="text-[11.5px] font-semibold text-[var(--color-text)]">
@@ -235,7 +318,7 @@ export function EmployeeDrawer({ employeeId, onClose, onOpenAlert }: {
                 </h4>
               </div>
               <ul className="divide-y divide-[var(--color-border)]">
-                {data.riskHistory.slice(-6).reverse().map((r) => (
+                {riskHistory.slice(-6).reverse().map((r) => (
                   <li key={`${r.timestamp}-${r.score}`} className="flex items-center gap-3 px-3.5 py-2">
                     <span className="num w-12 shrink-0 text-[11px] font-semibold" style={{ color: riskTone(r.score).hex }}>
                       {r.score.toFixed(0)}
